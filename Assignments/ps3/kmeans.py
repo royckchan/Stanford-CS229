@@ -17,15 +17,6 @@ def cluster_assignment(data, centroids):
     Output:
     idx - a nPixel-dimensional vector containing the indices of assigned centroids of all the data points (pixels)
     '''
-    
-    # Commented computations are very inefficient
-    # To compute squared Euclidean distances between all data points and all centroids in several steps
-    # (Vectorized) calculation of the vector differences (in R^3) of all data points from all centroids
-#    difference = data - centroids[:, None]     # shape = (K, nPixel, 3)
-#    
-#    # Take elementwise square of the above differences, and compute squared Euclidean distances between all data points and all centroids
-#    squaredDifference = difference ** 2
-#    squaredEuclideanDistance = np.sum(squaredDifference, axis = 2)     # shape = (K, nPixel)
 
     nPixel = data.shape[0]
     K = centroids.shape[0]
