@@ -1,0 +1,244 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import math\n",
+    "import time\n",
+    "X = np.ndfromtxt('images.csv', delimiter=',')\n",
+    "y = np.ndfromtxt(\"labels.csv\", delimiter=',', dtype=np.int8)\n",
+    "img_size = X.shape[1]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# filter out only 0 and 1 and split data\n",
+    "ind = np.logical_or(y == 1, y == 0)\n",
+    "X = X[ind, :]\n",
+    "y = y[ind]\n",
+    "\n",
+    "num_train = int(len(y) * 0.8)\n",
+    "X_train = X[0:num_train, :]\n",
+    "X_test = X[num_train:-1,:]\n",
+    "y_train = y[0:num_train]\n",
+    "y_test = y[num_train:-1]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1000 loops, best of 3: 267 µs per loop\n",
+      "The slowest run took 20.24 times longer than the fastest. This could mean that an intermediate result is being cached.\n",
+      "100000 loops, best of 3: 2.63 µs per loop\n"
+     ]
+    }
+   ],
+   "source": [
+    "def h1(theta, x):\n",
+    "    sum = 0.0\n",
+    "    for i in range(len(x)):\n",
+    "        sum -= theta[i] * x[i]\n",
+    "    return 1 / (1 + math.exp(sum))\n",
+    "\n",
+    "def h2(theta, x):\n",
+    "    return 1 / (1 + np.exp(np.dot(theta, x)))\n",
+    "\n",
+    "theta = np.zeros([img_size])\n",
+    "x = X[0,:]\n",
+    "%timeit h1(theta, x)\n",
+    "%timeit h2(theta, x)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python2.7/site-packages/ipykernel_launcher.py:3: RuntimeWarning: overflow encountered in exp\n",
+      "  This is separate from the ipykernel package so we can avoid doing imports until\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "time elapsed: 5.58682489395 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "# doing everything element-wise\n",
+    "def h(theta, x):\n",
+    "    return 1 / (1 + np.exp(-np.dot(theta, x)))\n",
+    "\n",
+    "def GD_elementwise(theta, X_train, y_train, alpha):\n",
+    "    diff_arr = np.zeros([len(y_train)])\n",
+    "    for m in range(len(y_train)):\n",
+    "            diff_arr[m] = h(theta, X_train[m, :]) - y_train[m]\n",
+    "    for j in range(len(theta)):\n",
+    "        s = 0.0\n",
+    "        for m in range(len(y_train)):\n",
+    "            s += diff_arr[m] * X_train[m, j]\n",
+    "        theta[j] = theta[j] - alpha * s\n",
+    "        \n",
+    "def train_elementwise(X_train, y_train, max_iter, alpha):\n",
+    "    theta = np.zeros([img_size])\n",
+    "    for i in range(max_iter):\n",
+    "        GD_elementwise(theta, X_train, y_train, alpha)       \n",
+    "    return theta\n",
+    "    \n",
+    "max_iter = 10\n",
+    "alpha = 0.01\n",
+    "start = time.time()\n",
+    "theta = train_elementwise(X_train, y_train, max_iter, alpha)\n",
+    "end = time.time()\n",
+    "print(\"time elapsed: {0} seconds\".format(end - start))\n",
+    "# pred = (np.sign(h_vec(theta, X_test) - 0.5) + 1) / 2\n",
+    "# print(\"percentage correct: {0}\".format(np.sum(pred == y_test) / len(y_test)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "time elapsed: 0.161715984344 seconds\n",
+      "percentage correct: 1\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python2.7/site-packages/ipykernel_launcher.py:3: RuntimeWarning: overflow encountered in exp\n",
+      "  This is separate from the ipykernel package so we can avoid doing imports until\n"
+     ]
+    }
+   ],
+   "source": [
+    "#some vectorization\n",
+    "def h_vec(theta, X):\n",
+    "    return 1 / (1 + np.exp(-np.matmul(X, theta)))\n",
+    "\n",
+    "def GD_better(theta,  X_train, y_train, alpha):\n",
+    "    diff_arr = h_vec(theta, X_train) - y_train\n",
+    "    for j in range(len(theta)):\n",
+    "        theta[j] = theta[j] - alpha * np.dot(diff_arr, X_train[:, j])\n",
+    "        \n",
+    "def train_better(X_train, y_train, max_iter, alpha):\n",
+    "    theta = np.zeros([img_size])\n",
+    "    for i in range(max_iter):\n",
+    "        GD_better(theta, X_train, y_train, alpha)       \n",
+    "    return theta\n",
+    "    \n",
+    "max_iter = 10\n",
+    "alpha = 0.01\n",
+    "start = time.time()\n",
+    "theta = train_better(X_train, y_train, max_iter, alpha)\n",
+    "end = time.time()\n",
+    "print(\"time elapsed: {0} seconds\".format(end - start))\n",
+    "pred = (np.sign(h_vec(theta, X_test) - 0.5) + 1) / 2\n",
+    "print(\"percentage correct: {0}\".format(np.sum(pred == y_test) / len(y_test)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "time elapsed: 0.0193650722504 seconds\n",
+      "percentage correct: 1\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python2.7/site-packages/ipykernel_launcher.py:3: RuntimeWarning: overflow encountered in exp\n",
+      "  This is separate from the ipykernel package so we can avoid doing imports until\n"
+     ]
+    }
+   ],
+   "source": [
+    "#fully vectorized\n",
+    "def GD (theta, X_train, y_train, alpha):\n",
+    "    theta -= alpha * np.squeeze(np.matmul(np.reshape(h_vec(theta, X_train) - y_train, [1, -1]), X_train))\n",
+    "    \n",
+    "def train_vec(X_train, y_train, max_iter, alpha):\n",
+    "    theta = np.zeros([img_size])\n",
+    "    for i in range(max_iter):\n",
+    "        GD(theta, X_train, y_train, alpha)       \n",
+    "    return theta\n",
+    "\n",
+    "max_iter = 10\n",
+    "alpha = 0.01\n",
+    "start = time.time()\n",
+    "theta = train_vec(X_train, y_train, max_iter, alpha)\n",
+    "end = time.time()\n",
+    "print(\"time elapsed: {0} seconds\".format(end - start))\n",
+    "pred = (np.sign(h_vec(theta, X_test) - 0.5) + 1) / 2\n",
+    "print(\"percentage correct: {0}\".format(np.sum(pred == y_test) / len(y_test)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 2",
+   "language": "python",
+   "name": "python2"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}

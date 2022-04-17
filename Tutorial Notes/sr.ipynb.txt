@@ -1,0 +1,189 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import time\n",
+    "X = np.ndfromtxt('images.csv', delimiter=',')\n",
+    "y_orig = np.ndfromtxt(\"labels.csv\", delimiter=',', dtype=np.int8)\n",
+    "img_size = X.shape[1]\n",
+    "num_class = 10\n",
+    "y = np.zeros([len(y_orig), num_class])\n",
+    "y[np.arange(len(y_orig)), y_orig] = 1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "num_train = int(len(y) * 0.8)\n",
+    "X_train = X[0:num_train, :]\n",
+    "X_test = X[num_train:-1,:]\n",
+    "y_train = y[0:num_train]\n",
+    "y_test = y[num_train:-1]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "10 loops, best of 3: 162 ms per loop\n"
+     ]
+    }
+   ],
+   "source": [
+    "def h_elementwise(theta, X):\n",
+    "    phi = np.zeros([X.shape[0], theta.shape[1]])\n",
+    "    for i in range(X.shape[0]):\n",
+    "        temp = np.matmul(np.transpose(theta), X[i, :])\n",
+    "        temp = temp - np.amax(temp)\n",
+    "        temp2 = np.exp(temp)\n",
+    "        phi[i, :] = temp2 / np.sum(temp2)\n",
+    "    return(phi)\n",
+    "\n",
+    "theta = np.zeros([img_size, num_class])\n",
+    "\n",
+    "%timeit h_elementwise(theta, X)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "10 loops, best of 3: 21.6 ms per loop\n"
+     ]
+    }
+   ],
+   "source": [
+    "def h_vec(theta, X):\n",
+    "    eta = np.matmul(X, theta)\n",
+    "    temp = np.exp(eta - np.reshape(np.amax(eta, axis=1), [-1, 1]))\n",
+    "    return (temp / np.reshape(np.sum(temp, axis=1), [-1, 1]))\n",
+    "\n",
+    "%timeit h_vec(theta, X)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "time elapsed: 4.7904689312 seconds\n",
+      "percentage correct: 0.925962981491\n"
+     ]
+    }
+   ],
+   "source": [
+    "# not fully vectorized\n",
+    "def GD(theta, X_train, y_train, alpha):\n",
+    "    diff = h_vec(theta, X_train) - y_train\n",
+    "    for k in range(num_class):\n",
+    "        theta[:, k] -= alpha * np.squeeze(np.matmul(np.reshape(diff[:, k], [1, -1]), X_train))\n",
+    "        \n",
+    "def train(X_train, y_train, max_iter, alpha):\n",
+    "    theta = np.zeros([img_size, 10])\n",
+    "    for i in range(max_iter):\n",
+    "        GD(theta, X_train, y_train, alpha)       \n",
+    "    return theta\n",
+    "\n",
+    "max_iter = 100\n",
+    "alpha = 0.001\n",
+    "start = time.time()\n",
+    "theta = train(X_train, y_train, max_iter, alpha)\n",
+    "end = time.time()\n",
+    "print(\"time elapsed: {0} seconds\".format(end - start))\n",
+    "pred = np.argmax(h_vec(theta, X_test), axis=1)\n",
+    "print(\"percentage correct: {0}\".format(np.sum(pred == np.argmax(y_test, axis=1)) / float(len(y_test))))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "time elapsed: 3.08342409134 seconds\n",
+      "percentage correct: 0.925962981491\n"
+     ]
+    }
+   ],
+   "source": [
+    "#full vectorized\n",
+    "def GD_vec(theta, X_train, y_train, alpha):\n",
+    "    theta -= alpha * np.matmul(np.transpose(X_train), (h_vec(theta, X_train) - y_train))\n",
+    "    \n",
+    "def train_vec(X_train, y_train, max_iter, alpha):\n",
+    "    theta = np.zeros([img_size, 10])\n",
+    "    for i in range(max_iter):\n",
+    "        GD_vec(theta, X_train, y_train, alpha)       \n",
+    "    return theta\n",
+    "\n",
+    "max_iter = 100\n",
+    "alpha = 0.001\n",
+    "start = time.time()\n",
+    "theta = train_vec(X_train, y_train, max_iter, alpha)\n",
+    "end = time.time()\n",
+    "print(\"time elapsed: {0} seconds\".format(end - start))\n",
+    "pred = np.argmax(h_vec(theta, X_test), axis=1)\n",
+    "print(\"percentage correct: {0}\".format(np.sum(pred == np.argmax(y_test, axis=1)) / float(len(y_test))))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 2",
+   "language": "python",
+   "name": "python2"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
