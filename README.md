@@ -1,7 +1,9 @@
 # Stanford-CS229
 
 *** Updates (20220417) ***
+
 To comply with [Stanford's teaching policy](https://github.com/royckchan/Stanford-CS229/issues/1), I have removed the assignment solutions from this repo.
+
 *** Updates (20220417) ***
 
 Andrew Ng's Stanford CS229 (Machine Learning) course materials - http://cs229.stanford.edu/syllabus.html
